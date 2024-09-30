@@ -11,7 +11,7 @@ public class OrderManagementSystem {
     public static void main(String[] args) {
         // Register MySQL JDBC driver
         try {
-            Class.forName("com.mysql.cj.jdbc.Driver"); // Ensure JDBC driver is loaded
+            Class.forName("com.mysql.cj.jdbc.Driver");
         } catch (ClassNotFoundException e) {
             System.out.println("MySQL JDBC Driver not found.");
             e.printStackTrace();
@@ -25,20 +25,32 @@ public class OrderManagementSystem {
             System.out.println("Connected to the MySQL database!");
 
             while (true) {
-                System.out.println("\n1. Place Order");
-                System.out.println("2. View Order History");
-                System.out.println("3. Exit");
+                System.out.println("\n1. Register Customer");
+                System.out.println("2. Register Product");
+                System.out.println("3. View All Products");
+                System.out.println("4. Place Order");
+                System.out.println("5. View Order History");
+                System.out.println("6. Exit");
                 System.out.print("Enter your choice: ");
                 int choice = scanner.nextInt();
 
                 switch (choice) {
                     case 1:
-                        placeOrder(connection, scanner);
+                        registerCustomer(connection, scanner);
                         break;
                     case 2:
-                        viewOrderHistory(connection, scanner);
+                        registerProduct(connection, scanner);
                         break;
                     case 3:
+                        viewAllProducts(connection);
+                        break;
+                    case 4:
+                        placeOrder(connection, scanner);
+                        break;
+                    case 5:
+                        viewOrderHistory(connection, scanner);
+                        break;
+                    case 6:
                         System.out.println("Goodbye!");
                         return;
                     default:
@@ -50,13 +62,98 @@ public class OrderManagementSystem {
         }
     }
 
+    // Function to register a new customer with specified customer ID
+    public static void registerCustomer(Connection connection, Scanner scanner) throws SQLException {
+        System.out.print("Enter Customer ID (Leave blank for auto-generated): ");
+        String customerIdInput = scanner.next();
+        Integer customerId = null;
+
+        // Check if input is provided for Customer ID
+        if (!customerIdInput.isEmpty()) {
+            customerId = Integer.parseInt(customerIdInput);
+        }
+
+        System.out.print("Enter Customer Name: ");
+        String name = scanner.next();
+
+        System.out.print("Enter Customer Email: ");
+        String email = scanner.next();
+
+        String insertCustomerSQL = "INSERT INTO customers (customer_id, name, email) VALUES (?, ?, ?)";
+
+        try (PreparedStatement stmt = connection.prepareStatement(insertCustomerSQL)) {
+            if (customerId != null) {
+                stmt.setInt(1, customerId);
+            } else {
+                stmt.setNull(1, Types.INTEGER); 
+            }
+            stmt.setString(2, name);
+            stmt.setString(3, email);
+            stmt.executeUpdate();
+            System.out.println("Customer registered successfully!");
+        } catch (SQLIntegrityConstraintViolationException e) {
+            System.out.println("Error: Customer ID already exists. Please try again with a different ID.");
+        }
+    }
+
+    // Function to register a new product
+    public static void registerProduct(Connection connection, Scanner scanner) throws SQLException {
+        System.out.print("Enter Product Name: ");
+        String name = scanner.next();
+
+        System.out.print("Enter Product Price: ");
+        double price = scanner.nextDouble();
+
+        System.out.print("Enter Product Quantity: ");
+        int quantity = scanner.nextInt();
+
+        String insertProductSQL = "INSERT INTO products (name, price, quantity) VALUES (?, ?, ?)";
+        
+        try (PreparedStatement stmt = connection.prepareStatement(insertProductSQL)) {
+            stmt.setString(1, name);
+            stmt.setDouble(2, price);
+            stmt.setInt(3, quantity);
+            stmt.executeUpdate();
+            System.out.println("Product registered successfully!");
+        }
+    }
+
+    // Function to view all products
+    public static void viewAllProducts(Connection connection) throws SQLException {
+        String query = "SELECT * FROM products";
+        
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(query)) {
+             
+            System.out.println("\nAll Products:");
+            while (rs.next()) {
+                int productId = rs.getInt("product_id");
+                String name = rs.getString("name");
+                double price = rs.getDouble("price");
+                int quantity = rs.getInt("quantity");
+
+                System.out.println("Product ID: " + productId + ", Name: " + name + ", Price: " + price + ", Quantity: " + quantity);
+            }
+        }
+    }
+
     // Function to place an order
     public static void placeOrder(Connection connection, Scanner scanner) throws SQLException {
         System.out.print("Enter Customer ID: ");
         int customerId = scanner.nextInt();
+        
+        if (!customerExists(connection, customerId)) {
+            System.out.println("Invalid Customer ID. Please register the customer first.");
+            return;
+        }
 
         System.out.print("Enter Product ID: ");
         int productId = scanner.nextInt();
+
+        if (!productExists(connection, productId)) {
+            System.out.println("Invalid Product ID. Please register the product first.");
+            return;
+        }
 
         System.out.print("Enter Quantity: ");
         int quantity = scanner.nextInt();
@@ -83,6 +180,28 @@ public class OrderManagementSystem {
             }
         } else {
             System.out.println("Insufficient stock for the selected product.");
+        }
+    }
+
+    // Function to check if a customer exists
+    public static boolean customerExists(Connection connection, int customerId) throws SQLException {
+        String query = "SELECT COUNT(*) FROM customers WHERE customer_id = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+            stmt.setInt(1, customerId);
+            ResultSet rs = stmt.executeQuery();
+
+            return rs.next() && rs.getInt(1) > 0;
+        }
+    }
+
+    // Function to check if a product exists
+    public static boolean productExists(Connection connection, int productId) throws SQLException {
+        String query = "SELECT COUNT(*) FROM products WHERE product_id = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+            stmt.setInt(1, productId);
+            ResultSet rs = stmt.executeQuery();
+
+            return rs.next() && rs.getInt(1) > 0;
         }
     }
 

@@ -6,7 +6,7 @@ public class OrderManagementSystem {
     // JDBC URL, username, and password for the database connection
     private static final String DB_URL = "jdbc:mysql://localhost:3306/ecommerce";
     private static final String USER = "ecommerce";
-    private static final String PASS = "ashutosh";
+    private static final String PASS = "your_password";
 
     public static void main(String[] args) {
         // Register MySQL JDBC driver
